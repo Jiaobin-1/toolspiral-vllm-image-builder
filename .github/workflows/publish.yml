@@ -16,7 +16,9 @@ jobs:
 
     steps:
       - name: Install pinned crane
-        run: go install github.com/google/go-containerregistry/cmd/crane@v0.22.0
+        run: |
+          go install github.com/google/go-containerregistry/cmd/crane@v0.22.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Authenticate to GHCR
         env:
