@@ -4,6 +4,7 @@ ARG BFCL_COMMIT=6ea57973c7a6097fd7c5915698c54c17c5b1b6c8
 
 RUN python3 -m pip install --no-cache-dir \
     "https://github.com/ShishirPatil/gorilla/archive/${BFCL_COMMIT}.tar.gz#subdirectory=berkeley-function-call-leaderboard" \
+    soundfile \
     && python3 -c 'import bfcl_eval.__main__, vllm; assert vllm.__version__ == "0.8.5.post1"'
 
 LABEL org.opencontainers.image.title="ToolSpiral Base LLM evaluation runtime" \
