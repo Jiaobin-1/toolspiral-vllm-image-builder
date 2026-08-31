@@ -29,7 +29,7 @@ jobs:
         run: |
           crane mutate \
             --platform linux/amd64 \
-            --entrypoint= \
+            --entrypoint=/usr/bin/env \
             --cmd=/bin/bash \
             --label 'org.opencontainers.image.title=ToolSpiral Base LLM vLLM runtime' \
             --label 'org.opencontainers.image.description=Determined-compatible vLLM 0.8.5.post1 runtime for Qwen3 Base evaluation' \
@@ -57,7 +57,7 @@ jobs:
           labels = runtime.get("Labels", {})
           assert config["architecture"] == "amd64"
           assert config["os"] == "linux"
-          assert runtime.get("Entrypoint") in (None, [])
+          assert runtime.get("Entrypoint") == ["/usr/bin/env"]
           assert runtime.get("Cmd") == ["/bin/bash"]
           assert labels["ai.toolspiral.vllm.version"] == "0.8.5.post1"
           assert labels["ai.toolspiral.vllm.base-digest"] == (
