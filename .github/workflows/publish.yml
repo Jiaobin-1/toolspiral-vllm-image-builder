@@ -1,0 +1,67 @@
+name: Publish Determined vLLM image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_IMAGE: docker.io/vllm/vllm-openai@sha256:c48cf118e1e6e39d7790e174d6014f7af5d06f79c2d29d984d11cbe2e8d414e7
+      TARGET_IMAGE: ghcr.io/jiaobin-1/toolspiral-vllm:0.8.5.post1-det
+
+    steps:
+      - name: Install pinned crane
+        run: go install github.com/google/go-containerregistry/cmd/crane@v0.22.0
+
+      - name: Authenticate to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | crane auth login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Copy and adapt the pinned image
+        run: |
+          crane mutate \
+            --platform linux/amd64 \
+            --entrypoint= \
+            --cmd=/bin/bash \
+            --label 'org.opencontainers.image.title=ToolSpiral Base LLM vLLM runtime' \
+            --label 'org.opencontainers.image.description=Determined-compatible vLLM 0.8.5.post1 runtime for Qwen3 Base evaluation' \
+            --label 'ai.toolspiral.vllm.version=0.8.5.post1' \
+            --label 'ai.toolspiral.vllm.base-digest=sha256:c48cf118e1e6e39d7790e174d6014f7af5d06f79c2d29d984d11cbe2e8d414e7' \
+            --tag "$TARGET_IMAGE" \
+            "$SOURCE_IMAGE"
+
+      - name: Verify published image metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          target = os.environ["TARGET_IMAGE"]
+          digest = subprocess.check_output(["crane", "digest", target], text=True).strip()
+          config = json.loads(
+              subprocess.check_output(
+                  ["crane", "config", "--platform", "linux/amd64", target],
+                  text=True,
+              )
+          )
+          runtime = config["config"]
+          labels = runtime.get("Labels", {})
+          assert config["architecture"] == "amd64"
+          assert config["os"] == "linux"
+          assert runtime.get("Entrypoint") in (None, [])
+          assert runtime.get("Cmd") == ["/bin/bash"]
+          assert labels["ai.toolspiral.vllm.version"] == "0.8.5.post1"
+          assert labels["ai.toolspiral.vllm.base-digest"] == (
+              "sha256:c48cf118e1e6e39d7790e174d6014f7af5d06f79c2d29d984d11cbe2e8d414e7"
+          )
+          print(f"PUBLISHED_IMAGE={target}@{digest}")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write(f"Published `{target}@{digest}`\n")
+          PY
